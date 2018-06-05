@@ -12,6 +12,31 @@ var core_1 = require("@angular/core");
 // import { FormGroup, FormControl, FormBuilder } from '@angular/forms';
 var forms_1 = require("@angular/forms");
 var customer_1 = require("./customer");
+// function ratingRange(c: AbstractControl): {[key: string]: boolean} | null {
+//     if(c.value != undefined && (isNaN(c.value) || c.value < 1 || c.value > 5)) {
+//         return {'range': true};
+//     }
+//     return null;
+// }
+function ratingRange(min, max) {
+    return function (c) {
+        if (c.value != undefined && (isNaN(c.value) || c.value < min || c.value > max)) {
+            return { 'range': true };
+        }
+        return null;
+    };
+}
+function emailMatcher(c) {
+    var emailControl = c.get('email');
+    var confirmControl = c.get('confirmEmail');
+    if (emailControl.pristine || confirmControl.pristine) {
+        return null;
+    }
+    if (emailControl.value === confirmControl.value) {
+        return null;
+    }
+    return { 'match': true };
+}
 var CustomerComponent = (function () {
     // populateTestData() : void {
     //     this.customerForm.setValue({
@@ -24,6 +49,10 @@ var CustomerComponent = (function () {
     function CustomerComponent(fb) {
         this.fb = fb;
         this.customer = new customer_1.Customer();
+        this.validationMessages = {
+            required: 'Please enter your email address',
+            pattern: 'Please enter a valid email address'
+        };
     }
     CustomerComponent.prototype.save = function () {
         console.log(this.customerForm);
@@ -36,14 +65,22 @@ var CustomerComponent = (function () {
         });
     };
     CustomerComponent.prototype.ngOnInit = function () {
+        var _this = this;
         this.customerForm = this.fb.group({
             firstName: ['', [forms_1.Validators.required, forms_1.Validators.minLength(3)]],
             lastName: [{ value: 'n/a', disabled: true }, [forms_1.Validators.required, forms_1.Validators.minLength(3)]],
-            email: ['', [forms_1.Validators.required, forms_1.Validators.pattern('[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+')]],
+            asdadadad: this.fb.group({
+                email: ['', [forms_1.Validators.required, forms_1.Validators.pattern('[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+')]],
+                confirmEmail: ['', forms_1.Validators.required]
+            }, { validator: emailMatcher }),
             phone: '',
             notification: 'email',
+            rating: ['', ratingRange(1, 5)],
             sendCatalog: true
         });
+        this.customerForm.get('notification').valueChanges.subscribe(function (data) { return _this.setNotification(data); });
+        var emailControl = this.customerForm.get('email');
+        emailControl.valueChanges.subscribe(function (value) { return _this.setMessage(emailControl); });
         // this.customerForm = new FormGroup({
         //     firstName: new FormControl(),
         //     lastName: new FormControl(),
@@ -60,6 +97,13 @@ var CustomerComponent = (function () {
             phoneControl.clearValidators();
         }
         phoneControl.updateValueAndValidity();
+    };
+    CustomerComponent.prototype.setMessage = function (c) {
+        var _this = this;
+        this.emailMessage = '';
+        if ((c.touched || c.dirty) && c.errors) {
+            this.emailMessage = Object.keys(c.errors).map(function (key) { return _this.validationMessages[key]; }).join(' ');
+        }
     };
     return CustomerComponent;
 }());
